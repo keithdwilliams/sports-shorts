@@ -1,1 +1,25 @@
+name: Render daily short
+on:
+  push:
+    paths: ['data/latest.json']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install playwright markdown numpy pillow && playwright install --with-deps chromium
+      - run: python render.py
+      - name: Publish video release
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          TAG="short-$(python -c "import json;print(json.load(open('data/latest.json'))['date_iso'])")"
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" out/video.mp4 --title "$TAG" --notes "Daily short"
 
